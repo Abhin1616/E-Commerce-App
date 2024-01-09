@@ -65,7 +65,6 @@ export const login = async (req, res, next, secret) => {
 }
 
 export const home = (req, res, next) => {
-    console.log(req.user)
     res.status(200).json({ message: 'Seller: You have access to this protected route!' });
 }
 

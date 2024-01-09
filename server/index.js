@@ -12,6 +12,7 @@ import cors from "cors";
 import customerRoute from "./routes/customerRoute.js";
 import sellerRoute from "./routes/sellerRoute.js"
 import cookieParser from "cookie-parser";
+import jwt from 'jsonwebtoken';
 
 
 if (process.env.NODE_ENV !== 'production') {
@@ -139,28 +140,24 @@ app.use("/shoppingApp/seller", sellerRoute(secret, refresh_secret));
 
 
 // Logout route
-app.get('/shoppingApp/logout', (req, res) => {
-    // Destroy the user's session
-    if (req.isAuthenticated()) {
-        req.logout(function (err) {
-            if (err) {
-                console.log(err);
-            } else {
-                // Clear the acc_token cookie
-                res.clearCookie('acc_token');
-                req.user = null;
-                // Destroy the session
-                req.session.destroy((err) => {
-                    if (err) {
-                        console.error('Error destroying session:', err);
-                    } else {
-                        // Redirect to a confirmation page or respond as needed
-                        res.json({ message: 'Logout successful' });
-                    }
-                });
-            }
-        });
-    } else {
-        res.json({ message: 'Log in first' });
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.acc_token;
+    console.log(token)
+    if (!token) {
+        return res.status(403).json({ message: 'Log in first' });
     }
+
+    try {
+        const data = jwt.verify(token, secret);
+        req.user = data.user;
+        next();
+    } catch {
+        return res.status(403).json({ message: 'Invalid token' });
+    }
+};
+
+app.get('/shoppingApp/logout', verifyToken, (req, res) => {
+    res.clearCookie('acc_token');
+    res.json({ message: 'Logout successful' });
 });
+
