@@ -1,6 +1,6 @@
 import Seller from '../models/seller.js';
 import jwt from 'jsonwebtoken';
-import { sellerSchema, productSchema } from '../joiSchemas.js';
+import { sellerSchema, productSchema, sellerEditSchema } from '../joiSchemas.js';
 import Product from '../models/product.js';
 
 export const register = async (req, res) => {
@@ -90,6 +90,45 @@ export const viewAddedProducts = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ error: error.message });
+
+    }
+}
+
+export const viewProfile = async (req, res) => {
+    try {
+        const seller = await Seller.findById(req.user._id);
+        res.status(200).json(seller)
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+
+    }
+}
+
+export const editProfile = async (req, res) => {
+    try {
+        const { error } = sellerEditSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ error: error.details[0].message });
+        }
+        const update = req.body
+        const seller = await Seller.findById(req.user._id);
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller not found' });
+        }
+        // Update the seller's  data
+        for (let key in update) {
+            if (key !== 'email' && key !== "username" && key !== "email") {
+                seller[key] = update[key];
+            }
+        }
+        await seller.save()
+        res.status(200).json(seller);
+
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: "An error occured while updating the profile" });
 
     }
 } 
