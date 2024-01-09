@@ -6,7 +6,6 @@ import { customerSchema, addressSchema, customerEditSchema } from '../joiSchemas
 import Address from '../models/address.js';
 
 
-
 export const register = async (req, res) => {
     try {
         const { error } = customerSchema.validate(req.body);
@@ -25,6 +24,12 @@ export const register = async (req, res) => {
         const existingEmail = await Customer.findOne({ email });
         if (existingEmail) {
             return res.status(400).json({ error: 'A user with the given email is already registered' });
+        }
+
+        // Check if the phone already exists
+        const existingPhone = await Customer.findOne({ phone });
+        if (existingPhone) {
+            return res.status(400).json({ error: 'A user with the given phone number is already registered' });
         }
 
         // Use passport-local-mongoose to register the user
@@ -132,6 +137,38 @@ export const searchProduct = async (req, res) => {
     }
 }
 
+export const updateCart = async (req, res, next) => {
+    try {
+        const { productId, action } = req.params; // action can be 'decrease' or 'remove'
+        const customerId = req.user._id;
+        const customer = await Customer.findById(customerId);
+        if (!customer) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+
+        // Find the product in the cart
+        const cartProductIndex = customer.cart.findIndex(cp => cp.product.toString() === productId);
+
+        // If the product is in the cart, decrease the quantity or remove it
+        if (cartProductIndex >= 0) {
+            if (action === 'decrease' && customer.cart[cartProductIndex].quantity > 1) {
+                customer.cart[cartProductIndex].quantity -= 1;
+                customer.cart[cartProductIndex].price -= customer.cart[cartProductIndex].price / (customer.cart[cartProductIndex].quantity + 1);
+            } else if (action === 'remove') {
+                customer.cart.splice(cartProductIndex, 1);
+            } else {
+                return res.status(400).json({ error: 'Invalid action' });
+            }
+        } else {
+            return res.status(404).json({ error: 'Product not in cart' });
+        }
+
+        await customer.save();
+        res.json({ "message": "Cart updated!" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
 
 
 export const showCart = async (req, res, next) => {
@@ -229,7 +266,9 @@ export const orderHistory = async (req, res) => {
                 path: 'orderHistory',
                 populate: {
                     path: 'products.product', // populate product in each product object
-                    model: 'Product' // assuming 'Product' is your product model
+                },
+                populate: {
+                    path: "shippingAddress"
                 }
             });
         const allOrders = customer.orderHistory;
@@ -246,7 +285,7 @@ export const orderHistory = async (req, res) => {
 export const profile = async (req, res) => {
     try {
         const customerId = req.user._id;
-        const customer = await Customer.findById(customerId);
+        const customer = await Customer.findById(customerId).populate("address");
         if (!customer) {
             return res.status(404).json({ error: 'Customer not found' });
         }
@@ -273,9 +312,7 @@ export const editProfile = async (req, res) => {
         }
         // Update the customer's  data
         for (let key in update) {
-            if (key !== 'address' && key !== "username" && key !== "email") {
-                customer[key] = update[key];
-            }
+            customer[key] = update[key];
         }
         // Save the updated customer data
         await customer.save();
@@ -329,6 +366,15 @@ export const editAddress = async (req, res) => {
             return res.status(400).json({ error: error.details[0].message });
         }
         const update = req.body; // Get the new data from the request body
+
+        // Find the customer who is trying to edit the address
+        const customer = await Customer.findById(req.user.id);
+
+        // Check if the addressId is in the customer's address array
+        if (!customer.address.includes(addressId)) {
+            return res.status(403).json({ error: 'You do not have permission to edit this address.' });
+        }
+
         const address = await Address.findByIdAndUpdate(addressId, update, { new: true })
         res.json("Address updated successfully")
     }
@@ -336,7 +382,6 @@ export const editAddress = async (req, res) => {
         // Handle any errors
         res.status(500).json({ error: 'An error occurred while updating the address.' });
     }
-
 }
 
 export const deleteAddress = async (req, res) => {

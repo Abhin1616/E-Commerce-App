@@ -123,7 +123,7 @@ export const editProfile = async (req, res) => {
             }
         }
         await seller.save()
-        res.status(200).json(seller);
+        res.status(200).json({ message: 'Profile updated successfully', seller });
 
 
     } catch (error) {
@@ -131,4 +131,46 @@ export const editProfile = async (req, res) => {
         res.status(500).json({ error: "An error occured while updating the profile" });
 
     }
-} 
+}
+export const viewProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        res.status(200).json(product)
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+
+    }
+}
+
+
+export const editProduct = async (req, res) => {
+    try {
+        const { error } = productSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ error: error.details[0].message });
+        }
+        const product = await Product.findById(req.params.productId);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        const update = req.body;
+        for (let key in update) {
+            product[key] = update[key];
+        }
+        await product.save();
+        res.json({ message: 'Product updated successfully', product });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}

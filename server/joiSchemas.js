@@ -5,8 +5,13 @@ const customerSchema = Joi.object({
     username: Joi.string().alphanum().min(3).max(30).required(),
     email: Joi.string().email().required(),
     password: Joi.string().pattern(new RegExp('^[a-zA-Z0-9]{3,30}$')).required(),
-
-});
+    phone: Joi.number().custom((value, helper) => {
+        if (value.toString().length !== 10) {
+            return helper.message('Phone number must have 10 digits.');
+        }
+        return value;
+    }, 'Phone number validation').required()
+}).unknown(false);
 
 const customerEditSchema = Joi.object({
     name: Joi.string().required(),
@@ -16,7 +21,7 @@ const customerEditSchema = Joi.object({
         }
         return value;
     }, 'Phone number validation').required()
-});
+}).unknown(false);
 
 const sellerSchema = Joi.object({
     name: Joi.string().required(),
@@ -45,6 +50,30 @@ const sellerSchema = Joi.object({
     }
 });
 
+const sellerEditSchema = Joi.object({
+    name: Joi.string().required(),
+    phone: Joi.number().custom((value, helper) => {
+        if (value.toString().length !== 10) {
+            return helper.message('Phone number must have 10 digits.');
+        }
+        return value;
+    }, 'Phone number validation').required(),
+    businessName: Joi.string().required(),
+    address: {
+        street: Joi.string().required(),
+        district: Joi.string().required(),
+        state: Joi.string().required(),
+        pincode: Joi.number().custom((value, helper) => {
+            if (value.toString().length !== 6) {
+                return helper.message('Pincode must have 6 digits.');
+            }
+            return value;
+        }, 'Pincode validation').required()
+
+
+    }
+}).unknown(false);
+
 const productSchema = Joi.object({
     productName: Joi.string().required(),
     description: Joi.string().required(),
@@ -53,12 +82,17 @@ const productSchema = Joi.object({
     category: Joi.string().required(),
 });
 const addressSchema = Joi.object({
-    addressType: Joi.string().required(),
+    addressType: Joi.string().valid("home", "work").required(),
     buildingName: Joi.string().required(),
     street: Joi.string().required(),
     landmark: Joi.string(),
     district: Joi.string().required(),
     state: Joi.string().required(),
-    pincode: Joi.number().integer().required()
+    pincode: Joi.number().custom((value, helper) => {
+        if (value.toString().length !== 6) {
+            return helper.message('Pincode must have 6 digits.');
+        }
+        return value;
+    }, 'Pincode validation').required()
 });
-export { customerSchema, sellerSchema, productSchema, addressSchema, customerEditSchema };
+export { customerSchema, sellerSchema, productSchema, addressSchema, customerEditSchema, sellerEditSchema };

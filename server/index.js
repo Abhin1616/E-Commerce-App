@@ -142,7 +142,6 @@ app.use("/shoppingApp/seller", sellerRoute(secret, refresh_secret));
 // Logout route
 const verifyToken = (req, res, next) => {
     const token = req.cookies.acc_token;
-    console.log(token)
     if (!token) {
         return res.status(403).json({ message: 'Log in first' });
     }
