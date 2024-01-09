@@ -1,7 +1,7 @@
 import express from 'express'
 import jwt from 'jsonwebtoken';
 import passport from "passport";
-import { addAddress, addToCart, deleteAddress, editAddress, editProfile, home, login, orderHistory, orderProduct, profile, register, searchProduct, showCart, viewProduct } from '../controllers/customer.js';
+import { addAddress, addToCart, deleteAddress, editAddress, editProfile, home, login, orderHistory, orderProduct, profile, register, searchProduct, showCart, viewProduct, updateCart } from '../controllers/customer.js';
 
 const customerRoutes = (secret) => {
 
@@ -15,6 +15,9 @@ const customerRoutes = (secret) => {
             }
             let authHeader = req.headers.authorization;
             let token = authHeader.split(' ')[1];
+            if (token !== req.cookies.acc_token) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
             jwt.verify(token, secret, (err, decoded) => {
                 if (err) {
                     return res.status(401).json({ error: 'Unauthorized' });
@@ -73,6 +76,8 @@ const customerRoutes = (secret) => {
     router.post('/home/product/:productId/add-to-cart', isAuthenticated, addToCart);
     router.get('/home/search', searchProduct);
     router.get('/home/products/cart', isAuthenticated, showCart);
+    router.post('/home/products/cart/:productId/:action', isAuthenticated, updateCart);
+
     router.get("/home/products/order-history", isAuthenticated, orderHistory)
     router.post('/home/products/order', isAuthenticated, orderProduct);
 
