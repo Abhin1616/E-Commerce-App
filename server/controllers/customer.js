@@ -71,7 +71,7 @@ export const home = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     try {
-        const products = await Product.find().skip(skip).limit(limit);
+        const products = await Product.find({ isAvailable: true }).skip(skip).limit(limit);
         res.json(products);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -98,6 +98,9 @@ export const addToCart = async (req, res, next) => {
         if (!product) {
             return res.status(404).json({ error: 'Product not found' });
         }
+        if (product.quantity < 1) {
+            return res.status(400).json({ error: 'Not enough product in stock' });
+        }
         const customerId = req.user._id;
         const customer = await Customer.findById(customerId);
         if (!customer) {
@@ -109,6 +112,9 @@ export const addToCart = async (req, res, next) => {
 
         // If the product is already in the cart, increase the quantity
         if (cartProductIndex >= 0) {
+            if (customer.cart[cartProductIndex].quantity + 1 > product.quantity) {
+                return res.status(400).json({ error: 'Not enough product in stock' });
+            }
             customer.cart[cartProductIndex].quantity += 1;
             customer.cart[cartProductIndex].price += product.price; // Assuming product.price is the price per item
         } else {
@@ -122,6 +128,7 @@ export const addToCart = async (req, res, next) => {
         res.status(500).json({ error: error.message });
     }
 }
+
 
 export const searchProduct = async (req, res) => {
     try {

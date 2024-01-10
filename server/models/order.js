@@ -29,7 +29,7 @@ const orderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Address",
         required: true
-    }
+    },
 });
 
 const Order = mongoose.model('Order', orderSchema);

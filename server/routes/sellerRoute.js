@@ -1,7 +1,7 @@
 import express from 'express'
 import passport from "passport";
 import jwt from 'jsonwebtoken';
-import { addProduct, editProduct, editProfile, home, login, register, viewAddedProducts, viewProduct, viewProfile } from '../controllers/seller.js';
+import { addProduct, editProduct, editProfile, home, login, register, viewAddedProducts, viewProduct, viewProfile, setUnavailable, viewOrders, viewSalesStatistics } from '../controllers/seller.js';
 
 const sellerRoute = (secret) => {
     const isAuthenticated = (req, res, next) => {
@@ -39,6 +39,9 @@ const sellerRoute = (secret) => {
     router.get("/home/products", isAuthenticated, viewAddedProducts)
     router.get('/home/products/:productId', isAuthenticated, viewProduct);
     router.patch('/home/products/:productId', isAuthenticated, editProduct);
+    router.patch('/home/products/:productId/setUnavailable', isAuthenticated, setUnavailable);
+    router.get("/home/view-orders", isAuthenticated, viewOrders)
+    router.get("/home/view-sales-statistics", isAuthenticated, viewSalesStatistics)
     router.route('/home')
         .get(isAuthenticated, home)
         .post(isAuthenticated, addProduct);

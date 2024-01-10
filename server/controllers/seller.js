@@ -2,6 +2,7 @@ import Seller from '../models/seller.js';
 import jwt from 'jsonwebtoken';
 import { sellerSchema, productSchema, sellerEditSchema } from '../joiSchemas.js';
 import Product from '../models/product.js';
+import Order from '../models/order.js';
 
 export const register = async (req, res) => {
     try {
@@ -170,6 +171,80 @@ export const editProduct = async (req, res) => {
         }
         await product.save();
         res.json({ message: 'Product updated successfully', product });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export const setUnavailable = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        product.isAvailable = false;
+        await product.save()
+        res.json({ message: 'Product set to unavailable' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export const viewOrders = async (req, res) => {
+    try {
+        const allOrders = await Order.find().populate('products.product');
+        const sellerOrders = allOrders.map(order => {
+            // Filter the products in the order to only include those sold by the current user
+            const sellerProducts = order.products.filter(product =>
+                product.product.seller.toString() === req.user._id.toString()
+            );
+            // Return a new object that contains the order info and only the products sold by the current user
+            return { ...order._doc, products: sellerProducts };
+        }).filter(order => order.products.length > 0); // Remove orders that don't contain any products sold by the current user
+
+        // Map through the orders and return only the product and its quantity
+        const productAndQuantity = sellerOrders.map(order => {
+            return order.products.map(product => {
+                return {
+                    product: product.product,
+                    quantity: product.quantity
+                };
+            });
+        });
+
+        res.status(200).json(productAndQuantity);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+
+export const viewSalesStatistics = async (req, res) => {
+    try {
+        // Fetch all orders and populate the product details
+        const allOrders = await Order.find().populate('products.product');
+
+        let totalSales = 0;
+        let totalProductsSold = 0;
+
+        // Loop over each order
+        allOrders.forEach(order => {
+            // Loop over each product in the order
+            order.products.forEach(product => {
+                // If the seller of the product is the current user, add to the totals
+                if (product.product.seller.toString() === req.user._id.toString()) {
+                    totalSales += product.total;
+                    totalProductsSold += product.quantity;
+                }
+            });
+        });
+
+        // Send the response
+        res.status(200).json({ totalSales, totalProductsSold });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

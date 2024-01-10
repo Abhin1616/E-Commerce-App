@@ -26,7 +26,13 @@ const productSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
+    },
+    isAvailable: {
+        type: Boolean,
+        required: true,
+        default: true
     }
+
 });
 
 const Product = mongoose.model('Product', productSchema);
