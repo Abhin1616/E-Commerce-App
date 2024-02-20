@@ -1,4 +1,14 @@
 import mongoose from 'mongoose';
+const imageSchema = new mongoose.Schema({
+    url: {
+        type: String,
+        required: true
+    },
+    filename: {
+        type: String,
+        required: true
+    },
+})
 const productSchema = new mongoose.Schema({
     seller: {
         type: mongoose.Schema.Types.ObjectId,
@@ -31,7 +41,8 @@ const productSchema = new mongoose.Schema({
         type: Boolean,
         required: true,
         default: true
-    }
+    },
+    image: [imageSchema]
 
 });
 

@@ -1,0 +1,29 @@
+.SuccessGif {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 80vh;
+    position: absolute;
+    /* Add this */
+    top: 50%;
+    /* Add this */
+    left: 50%;
+    /* Add this */
+    transform: translate(-50%, -50%);
+    /* Add this */
+}
+
+.SuccessGifImage {
+    height: 150px;
+    width: 150px;
+}
+
+.ConfettiGifImage {
+    height: 100%;
+    width: 100%;
+    position: fixed;
+    /* Add this */
+    z-index: -1;
+    /* Add this */
+}

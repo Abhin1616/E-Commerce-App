@@ -37,7 +37,14 @@ mongoose.connect(mongoDbUrl)
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
+
+const corsOptions = {
+    origin: 'http://localhost:5173', // replace with the origin of your client-side app
+    credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(cookieParser())
 
 const store = MongoStore.create({
@@ -141,22 +148,32 @@ app.use("/shoppingApp/seller", sellerRoute(secret, refresh_secret));
 
 // Logout route
 const verifyToken = (req, res, next) => {
-    const token = req.cookies.acc_token;
+    let authHeader = req.headers.authorization;
+    let token;
+    if (authHeader) {
+        token = authHeader.split(' ')[1];
+    }
     if (!token) {
         return res.status(403).json({ message: 'Log in first' });
     }
-
     try {
         const data = jwt.verify(token, secret);
         req.user = data.user;
         next();
-    } catch {
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(403).json({ message: 'Token expired. Log in again.' });
+        }
         return res.status(403).json({ message: 'Invalid token' });
     }
 };
-
+app.get('/shoppingApp/verify-token', verifyToken, (req, res) => {
+    res.status(200).json({ message: "Token valid" });
+})
 app.get('/shoppingApp/logout', verifyToken, (req, res) => {
     res.clearCookie('acc_token');
     res.json({ message: 'Logout successful' });
 });
-
+app.get("*", (req, res) => {
+    res.status(404).json("Page Not Found!")
+})

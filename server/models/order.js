@@ -21,16 +21,54 @@ const orderSchema = new mongoose.Schema({
             required: true,
         }
     }],
-    grandTotal: {
-        type: Number,
-        required: true
+    payment: {
+        totalPrice: {
+            type: Number,
+            required: true
+        }, payedPrice: {
+            type: Number,
+            required: true
+        },
+        paymentMethod: {
+            type: String,
+            required: true
+        }
     },
     shippingAddress: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Address",
-        required: true
+        addressType: {
+            type: String,
+            required: true,
+            enum: ["home", "work"]
+        },
+        buildingName: {
+            type: String,
+            required: true
+        },
+        street: {
+            type: String,
+            required: true
+        },
+        district: {
+            type: String,
+            required: true
+        },
+        landmark: {
+            type: String
+        },
+        state: {
+            type: String,
+            required: true
+        },
+        pincode: {
+            type: Number,
+            required: true
+        },
+        phone: {
+            type: Number,
+            required: true
+        }
     },
-});
+}, { timestamps: true });
 
 const Order = mongoose.model('Order', orderSchema);
 export default Order

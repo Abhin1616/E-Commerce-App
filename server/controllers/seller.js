@@ -6,11 +6,13 @@ import Order from '../models/order.js';
 
 export const register = async (req, res) => {
     try {
+        console.log(req.body)
         const { error } = sellerSchema.validate(req.body);
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
-        const { name, username, email, password, phone, businessName } = req.body;
+        const { name, username, email, password, phone, businessName, gender } = req.body;
+
         // Use passport-local-mongoose to register the user
         const { street, district, state, pincode } = req.body.address
         const address = { street, district, state, pincode }
@@ -30,7 +32,7 @@ export const register = async (req, res) => {
         if (existingBusiness) {
             return res.status(400).json({ error: 'The business name you have chosen is already in use. Please select a different name.' });
         }
-        const user = await Seller.register(new Seller({ name, username, email, phone, businessName, address }), password);
+        const user = await Seller.register(new Seller({ name, username, email, phone, businessName, gender, address }), password);
 
         res.status(201).json({ message: 'Seller registered successfully' });
     } catch (error) {
@@ -41,22 +43,21 @@ export const register = async (req, res) => {
 export const login = async (req, res, next, secret) => {
     try {
         const { identifier, password } = req.body;
-
         // Assuming you have a Seller model
         const seller = await Seller.findOne({
             $or: [{ username: identifier }, { email: identifier }]
         });
 
         if (!seller) {
-            return res.status(400).json({ "error": "Invalid username or email" });
+            return res.status(400).json("Invalid username or password");
         }
 
         seller.authenticate(password, (err, authenticatedSeller, error) => {
             if (err) { return next(err); }
-            if (!authenticatedSeller) { return res.status(400).json({ "error": "Invalid username or email" }); }
+            if (!authenticatedSeller) { return res.status(400).json("Invalid username or password"); }
             const token = jwt.sign({ sub: authenticatedSeller._id, userType: 'seller', username: seller.username }, secret, { expiresIn: '1h' });
-            res.cookie('acc_token', token, { httpOnly: true })
-            res.json(token);
+            res.cookie('acc_token', token, { httpOnly: true });
+            res.json({ token });
 
         });
     } catch (error) {
@@ -75,19 +76,40 @@ export const addProduct = async (req, res, next) => {
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
+        if (req.files.length == 0) {
+            return res.status(404).json({ error: 'Image is required' });
+        }
         const { productName, description, price, quantity, category } = req.body;
-        const product = new Product({ productName, description, price, quantity, category, seller: req.user._id });
-        await product.save()
+        const cloudinaryInfo = req.files.map((file) => ({
+            url: file.path,
+            filename: file.filename,
+            cloudinary: file.cloudinary,
+        }));
+
+        const product = new Product({
+            productName,
+            description,
+            price,
+            quantity,
+            category,
+            seller: req.user._id,
+            image: cloudinaryInfo,
+        });
+
+        await product.save();
         res.status(200).json("Product added successfully!");
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-}
+};
+
+
 export const viewAddedProducts = async (req, res) => {
     try {
         const seller = await Seller.findById(req.user._id);
         const products = await Product.find({ seller })
         res.status(200).json(products);
+
 
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -151,7 +173,6 @@ export const viewProduct = async (req, res) => {
     }
 }
 
-
 export const editProduct = async (req, res) => {
     try {
         const { error } = productSchema.validate(req.body);
@@ -166,9 +187,19 @@ export const editProduct = async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized' });
         }
         const update = req.body;
+
+        // Update the product's data
         for (let key in update) {
-            product[key] = update[key];
+            if (key !== 'images' && key != "isAvailable") {
+                product[key] = update[key];
+            }
         }
+        if (req.files.length) {
+            const images = req.files.map(file => ({ url: file.path, filename: file.filename }));
+            product.image.push(...images);
+        }
+
+
         await product.save();
         res.json({ message: 'Product updated successfully', product });
     } catch (error) {
@@ -176,7 +207,8 @@ export const editProduct = async (req, res) => {
     }
 }
 
-export const setUnavailable = async (req, res) => {
+
+export const toggleIsAvailable = async (req, res) => {
     try {
         const { productId } = req.params;
         const product = await Product.findById(productId);
@@ -186,9 +218,10 @@ export const setUnavailable = async (req, res) => {
         if (product.seller.toString() !== req.user._id.toString()) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
-        product.isAvailable = false;
+        const available = product.isAvailable;
+        product.isAvailable = !available;
         await product.save()
-        res.json({ message: 'Product set to unavailable' });
+        res.json({ product, message: available ? 'Product set to unavailable' : "Product is available now" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -196,7 +229,7 @@ export const setUnavailable = async (req, res) => {
 
 export const viewOrders = async (req, res) => {
     try {
-        const allOrders = await Order.find().populate('products.product');
+        const allOrders = await Order.find().sort({ createdAt: -1 }).populate(['products.product', 'customer']);
         const sellerOrders = allOrders.map(order => {
             // Filter the products in the order to only include those sold by the current user
             const sellerProducts = order.products.filter(product =>
@@ -206,46 +239,80 @@ export const viewOrders = async (req, res) => {
             return { ...order._doc, products: sellerProducts };
         }).filter(order => order.products.length > 0); // Remove orders that don't contain any products sold by the current user
 
-        // Map through the orders and return only the product and its quantity
-        const productAndQuantity = sellerOrders.map(order => {
-            return order.products.map(product => {
-                return {
-                    product: product.product,
-                    quantity: product.quantity
-                };
-            });
-        });
 
-        res.status(200).json(productAndQuantity);
+        res.status(200).json({ sellerOrders });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 }
 
+export const viewSingleOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.orderId).populate(['products.product', 'customer']);
+        const sellerProducts = order.products.filter(product =>
+            product.product.seller.toString() === req.user._id.toString()
+        );
+        order.products = sellerProducts
+        res.status(200).json(order);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
 
 export const viewSalesStatistics = async (req, res) => {
     try {
         // Fetch all orders and populate the product details
         const allOrders = await Order.find().populate('products.product');
-
         let totalSales = 0;
         let totalProductsSold = 0;
+        let salesPerMonth = {};
+        let salesPerYear = {};
+        let productsPerMonth = {};
+        let productsPerYear = {};
 
         // Loop over each order
         allOrders.forEach(order => {
+            // Get the month and year when the order was created
+            const monthYear = `${order.createdAt.getMonth() + 1}-${order.createdAt.getFullYear()}`;
+            const year = order.createdAt.getFullYear().toString();
+
+            // Initialize if not already done
+            if (!salesPerMonth[monthYear]) {
+                salesPerMonth[monthYear] = 0;
+            }
+            if (!salesPerYear[year]) {
+                salesPerYear[year] = 0;
+            }
+            if (!productsPerMonth[monthYear]) {
+                productsPerMonth[monthYear] = 0;
+            }
+            if (!productsPerYear[year]) {
+                productsPerYear[year] = 0;
+            }
+
             // Loop over each product in the order
             order.products.forEach(product => {
                 // If the seller of the product is the current user, add to the totals
                 if (product.product.seller.toString() === req.user._id.toString()) {
-                    totalSales += product.total;
+                    const productTotal = product.total;
+                    totalSales += productTotal;
                     totalProductsSold += product.quantity;
+
+                    // Add to the monthly and yearly sales
+                    salesPerMonth[monthYear] += productTotal;
+                    salesPerYear[year] += productTotal;
+
+                    // Add to the monthly and yearly products sold
+                    productsPerMonth[monthYear] += product.quantity;
+                    productsPerYear[year] += product.quantity; // New line
                 }
             });
         });
 
         // Send the response
-        res.status(200).json({ totalSales, totalProductsSold });
+        res.status(200).json({ totalSales, totalProductsSold, salesPerMonth, salesPerYear, productsPerMonth, productsPerYear }); // New parameter
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 }
+

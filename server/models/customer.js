@@ -6,6 +6,11 @@ const customerSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    gender: {
+        type: String,
+        required: true,
+        enum: ['male', 'female', 'others']
+    },
     username: {
         type: String,
         required: true,

@@ -18,7 +18,11 @@ const sellerSchema = new mongoose.Schema({
         lowercase: true,
         trim: true,
     },
-    // Fields specific to Google authentication
+    gender: {
+        type: String,
+        required: true,
+        enum: ['male', 'female', 'others']
+    },
     phone: {
         type: Number,
         required: true

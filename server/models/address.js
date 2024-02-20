@@ -28,9 +28,16 @@ const addressSchema = new mongoose.Schema({
     pincode: {
         type: Number,
         required: true
+    },
+    phone: {
+        type: Number,
+        required: true
     }
 })
 
 const Address = mongoose.model("Address", addressSchema)
 
 export default Address;
+
+
+

@@ -1,26 +1,29 @@
 import express from 'express'
 import jwt from 'jsonwebtoken';
 import passport from "passport";
-import { addAddress, addToCart, deleteAddress, editAddress, editProfile, home, login, orderHistory, orderProduct, profile, register, searchProduct, showCart, viewProduct, updateCart } from '../controllers/customer.js';
+import { addAddress, addToCart, deleteAddress, editAddress, editProfile, home, login, orderHistory, orderProduct, profile, register, searchProduct, showCart, viewProduct, updateCart, showAllCategories, categorizeProducts, checkout, viewAddress } from '../controllers/customer.js';
 
 const customerRoutes = (secret) => {
 
     const isAuthenticated = (req, res, next) => {
         passport.authenticate('jwt', { session: false }, (err, user, info) => {
+
             if (err) {
-                return res.status(500).json({ error: err.message });
+                return res.status(500).json({ error: err.message, message });
             }
             if (!user) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             let authHeader = req.headers.authorization;
             let token = authHeader.split(' ')[1];
-            if (token !== req.cookies.acc_token) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
             jwt.verify(token, secret, (err, decoded) => {
                 if (err) {
-                    return res.status(401).json({ error: 'Unauthorized' });
+                    if (err.name === 'TokenExpiredError') {
+                        return res.status(403).json({ message: 'Token expired. Log in again.' });
+                    } else {
+                        return res.status(401).json({ error: 'Unauthorized' });
+                    }
+
                 } else {
                     // If the token is still valid, proceed to the next middleware
                     if (decoded.userType != "customer") {
@@ -68,18 +71,12 @@ const customerRoutes = (secret) => {
 
 
     const router = express.Router()
-
+    router.get("/verify-token", isAuthenticated, (req, res) => {
+        res.status(200).json({ message: "Token valid" });
+    })
     router.post('/register', register);
     router.post('/login', (req, res, next) => login(req, res, next, secret))
     router.get('/home', home);
-    router.get('/home/product/:id', isAuthenticated, viewProduct);
-    router.post('/home/product/:productId/add-to-cart', isAuthenticated, addToCart);
-    router.get('/home/search', searchProduct);
-    router.get('/home/products/cart', isAuthenticated, showCart);
-    router.post('/home/products/cart/:productId/:action', isAuthenticated, updateCart);
-
-    router.get("/home/products/order-history", isAuthenticated, orderHistory)
-    router.post('/home/products/order', isAuthenticated, orderProduct);
 
     // Profile related routes
     router.route('/profile')
@@ -89,7 +86,22 @@ const customerRoutes = (secret) => {
     // Address related routes
     router.post('/profile/address', isAuthenticated, addAddress)
 
+    router.get('/home/categories', showAllCategories)
+    router.get("/home/category", categorizeProducts)
+    router.get('/home/search', searchProduct);
+    router.get('/home/products/cart', isAuthenticated, showCart);
+    router.post("/home/checkout", isAuthenticated, checkout)
+    router.get("/home/products/order-history", isAuthenticated, orderHistory)
+    router.post('/home/products/order', isAuthenticated, orderProduct);
+    router.get('/home/products/:productId', viewProduct);
+    router.post('/home/products/:productId/add-to-cart', isAuthenticated, addToCart);
+    router.post('/home/products/cart/:productId/:action', isAuthenticated, updateCart);
+
+
+
+
     router.route('/profile/address/:addressId')
+        .get(isAuthenticated, viewAddress)
         .patch(isAuthenticated, editAddress)
         .delete(isAuthenticated, deleteAddress);
 

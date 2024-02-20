@@ -1,7 +1,10 @@
 import express from 'express'
 import passport from "passport";
 import jwt from 'jsonwebtoken';
-import { addProduct, editProduct, editProfile, home, login, register, viewAddedProducts, viewProduct, viewProfile, setUnavailable, viewOrders, viewSalesStatistics } from '../controllers/seller.js';
+import { addProduct, editProduct, editProfile, home, login, register, viewAddedProducts, viewProduct, viewProfile, viewOrders, viewSalesStatistics, toggleIsAvailable, viewSingleOrder } from '../controllers/seller.js';
+import multer from 'multer';
+import { storage } from '../cloudinary/index.js';
+const upload = multer({ storage })
 
 const sellerRoute = (secret) => {
     const isAuthenticated = (req, res, next) => {
@@ -13,13 +16,15 @@ const sellerRoute = (secret) => {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             let authHeader = req.headers.authorization;
+
             let token = authHeader.split(' ')[1];
-            if (token !== req.cookies.acc_token) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
             jwt.verify(token, secret, (err, decoded) => {
                 if (err) {
-                    return res.status(401).json({ error: 'Unauthorized' });
+                    if (err.name === 'TokenExpiredError') {
+                        return res.status(403).json({ message: 'Token expired. Log in again.' });
+                    } else {
+                        return res.status(401).json({ error: 'Unauthorized' });
+                    }
                 } else {
                     // If the token is still valid, proceed to the next middleware
                     if (decoded.userType != "seller") {
@@ -34,17 +39,21 @@ const sellerRoute = (secret) => {
     };
 
     const router = express.Router()
+    router.get("/verify-token", isAuthenticated, (req, res) => {
+        res.status(200).json({ message: "Token valid" });
+    })
     router.post('/register', register)
     router.post('/login', (req, res, next) => login(req, res, next, secret))
     router.get("/home/products", isAuthenticated, viewAddedProducts)
     router.get('/home/products/:productId', isAuthenticated, viewProduct);
-    router.patch('/home/products/:productId', isAuthenticated, editProduct);
-    router.patch('/home/products/:productId/setUnavailable', isAuthenticated, setUnavailable);
+    router.patch('/home/products/:productId', isAuthenticated, upload.array('image'), editProduct);
+    router.patch('/home/products/:productId/toggle-availability', isAuthenticated, toggleIsAvailable);
     router.get("/home/view-orders", isAuthenticated, viewOrders)
+    router.get("/home/view-orders/:orderId", isAuthenticated, viewSingleOrder)
     router.get("/home/view-sales-statistics", isAuthenticated, viewSalesStatistics)
     router.route('/home')
         .get(isAuthenticated, home)
-        .post(isAuthenticated, addProduct);
+        .post(isAuthenticated, upload.array('image'), addProduct);
     router.route('/profile')
         .get(isAuthenticated, viewProfile)
         .patch(isAuthenticated, editProfile)
