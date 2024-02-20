@@ -59,7 +59,7 @@ const SellerViewSingleOrder = () => {
                                 {orderDetails.products.map((products, productIndex) => (
                                     <div key={productIndex} className='flex my-2 border border-gray-300 py-2 items-center justify-between'>
                                         <div className='flex items-center'>
-                                            <Link to={`/shoppingApp/products/${products.product._id}`} className='w-[150px] flex justify-center'>
+                                            <Link to={`/shoppingApp/seller/view-product/${products.product._id}`} className='w-[150px] flex justify-center'>
                                                 <img style={{ height: "100px", width: "auto" }} src={products.product.image[0].url} alt="" />
                                             </Link>
                                             <div>

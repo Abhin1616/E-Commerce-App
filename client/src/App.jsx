@@ -13,7 +13,7 @@ import SellerViewAddedProducts from "./pages/Seller/SellerViewAddedProducts"
 import SellerViewProduct from "./pages/Seller/SellerViewProduct"
 import Navbar from "./pages/Navbar"
 import CustomerCart from "./pages/Customer/CustomerCart"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import CustomerProfile from "./pages/Customer/CustomerProfile"
 import CustomerCheckout from "./pages/Customer/CustomerCheckout"
 import CustomerAddAddress from "./pages/Customer/CustomerAddAddress"
@@ -22,8 +22,13 @@ import CustomerEditAddress from "./pages/Customer/CustomerEditAddress"
 import CustomerOrders from "./pages/Customer/CustomerOrders"
 import SellerOrders from "./pages/Seller/SellerOrders"
 import SellerViewSingleOrder from "./pages/Seller/SellerViewSingleOrder"
-
+import NotFoundTemplate from "./components/NotFoundTemplate"
 function App() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate("/shoppingApp/home");
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -53,6 +58,7 @@ function App() {
         <Route path="/shoppingApp/profile/add-address" element={<CustomerAddAddress />}></Route>
         <Route path="/shoppingApp/profile/edit-address/:addressId" element={<CustomerEditAddress />}></Route>
         <Route path="/shoppingApp/view-order-history" element={<CustomerOrders />}></Route>
+        <Route path="*" element={<NotFoundTemplate />} />
       </Routes>
 
     </div>
