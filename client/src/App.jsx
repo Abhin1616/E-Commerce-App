@@ -13,7 +13,7 @@ import SellerViewAddedProducts from "./pages/Seller/SellerViewAddedProducts"
 import SellerViewProduct from "./pages/Seller/SellerViewProduct"
 import Navbar from "./pages/Navbar"
 import CustomerCart from "./pages/Customer/CustomerCart"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import CustomerProfile from "./pages/Customer/CustomerProfile"
 import CustomerCheckout from "./pages/Customer/CustomerCheckout"
 import CustomerAddAddress from "./pages/Customer/CustomerAddAddress"
@@ -24,11 +24,8 @@ import SellerOrders from "./pages/Seller/SellerOrders"
 import SellerViewSingleOrder from "./pages/Seller/SellerViewSingleOrder"
 import NotFoundTemplate from "./components/NotFoundTemplate"
 function App() {
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    navigate("/shoppingApp/home");
-  }, []);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
